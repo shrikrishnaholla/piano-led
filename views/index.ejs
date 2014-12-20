@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset=utf-8>
+        <title>HTML5 JavaScript Piano - with Data URIs</title>
+        <meta name="description" content="A synth piano synth that generates all of its audio files dynamically using JavaScript and data URIs. Choose from a variety of sounds styles and play with the looper, visual waveforms, and more." />
+        <link rel="stylesheet" type="text/css" href="stylesheets/piano.css" />
+        <meta property="og:image" content="http://mrcoles.com/media/img/piano-visual-mode.png">
+        <link rel="image_src" href="http://mrcoles.com/media/img/piano-visual-mode.png" />
+        <style type="text/css">
+        audio,
+        video {
+            -moz-transition: all 1s ease;
+            -ms-transition: all 1s ease;
+            -o-transition: all 1s ease;
+            -webkit-transition: all 1s ease;
+            transition: all 1s ease;
+            vertical-align: top;
+            /*width: 100%;*/
+            height: 175px;
+            width: auto;
+            margin-left: 40%;
+        }
+        </style>
+    </head>
+    <body>
+        <div id="content">
+          <input type="hidden" id="broadcast-name">
+            <div id="content-inner">
+                <div id="piano">
+                    <h1>Javascript Piano</h1>
+                    <div class="help show" tabindex="1">
+                        <div class="help-inner">
+                            <div id="synth-settings"></div>
+                            <div class="opts">
+                                <p><strong>Controls:</strong></p>
+                                <p>play using home row &amp; above &nbsp; /</p>
+                                <p>change playable keys: “,” &amp; “.” &nbsp; /</p>
+                                <p>shift keyboard: ← &amp; → <span id="shift"></span></p>
+                            </div>
+                            <div class="opts">
+                                <p><strong>Extras:</strong></p>
+                                <p class="toggle-color toggle hold">Color - c &nbsp; /</p>
+                                <p class="toggle-demo toggle">Demo - m &nbsp; /</p>
+                                <p class="toggle-animate toggle">Visual mode - 8 &nbsp; /</p>
+                                <p class="toggle-looper">Looper - 9 &nbsp; /</p>
+                                <p>Help - 0</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="loop" tabindex="2">loop</div>
+                </div>
+            </div>
+          <!-- local/remote videos container -->
+          <button id="setup-new-broadcast" disabled>Start broadcasting</button>
+            <div id="videos-container"></div>
+            <!-- list of all available broadcasting rooms -->
+            <table style="width: 100%;" id="rooms-list"></table>
+        </div>
+        <script src="javascripts/jquery-1.7.1.min.js"></script>
+        <script src="/socket.io/socket.io.js"></script>
+        <script src="javascripts/audio.js"></script>
+        <script src="javascripts/piano.js"></script>
+<script src="https://cdn.webrtc-experiment.com/RTCMultiConnection.js"> </script>
+<script>
+ var connection = new RTCMultiConnection();
+        connection.session = {
+            audio: false,
+            video: true,
+            oneway: true
+        };
+        connection.onstream = function(e) {
+            e.mediaElement.width = 250;
+            videosContainer.insertBefore(e.mediaElement, videosContainer.firstChild);
+            rotateVideo(e.mediaElement);
+            scaleVideos();
+        };
+        function rotateVideo(mediaElement) {
+            mediaElement.style[navigator.mozGetUserMedia ? 'transform' : '-webkit-transform'] = 'rotate(0deg)';
+            setTimeout(function() {
+                mediaElement.style[navigator.mozGetUserMedia ? 'transform' : '-webkit-transform'] = 'rotate(360deg)';
+            }, 1000);
+        }
+        connection.onstreamended = function(e) {
+            e.mediaElement.style.opacity = 0;
+            rotateVideo(e.mediaElement);
+            setTimeout(function() {
+                if (e.mediaElement.parentNode) {
+                    e.mediaElement.parentNode.removeChild(e.mediaElement);
+                }
+                scaleVideos();
+            }, 1000);
+        };
+        var sessions = {};
+        connection.onNewSession = function(session) {
+            if (sessions[session.sessionid]) return;
+            sessions[session.sessionid] = session;
+            var tr = document.createElement('tr');
+            tr.innerHTML = '<td><strong>' + session.sessionid + '</strong> is sharing his webcam in one-way direction!</td>' +
+                '<td><button class="join">View His Webcam</button></td>';
+            roomsList.insertBefore(tr, roomsList.firstChild);
+            var joinRoomButton = tr.querySelector('.join');
+            joinRoomButton.setAttribute('data-sessionid', session.sessionid);
+            joinRoomButton.onclick = function() {
+                this.disabled = true;
+                var sessionid = this.getAttribute('data-sessionid');
+                session = sessions[sessionid];
+                if (!session) throw 'No such session exists.';
+                connection.join(session);
+            };
+        };
+        var videosContainer = document.getElementById('videos-container') || document.body;
+
+        var videosContainer = document.getElementById('videos-container') || document.body;
+        var roomsList = document.getElementById('rooms-list');
+        document.getElementById('setup-new-broadcast').onclick = function() {
+            this.disabled = true;
+            connection.open(document.getElementById('broadcast-name').value || 'Anonymous');
+        };
+        // setup signaling to search existing sessions
+        connection.connect();
+
+        function scaleVideos() {
+            var videos = document.querySelectorAll('video'),
+                length = videos.length,
+                video;
+            var minus = 130;
+            var windowHeight = 100;
+            var windowWidth = 250;
+            var windowAspectRatio = windowWidth / windowHeight;
+            var videoAspectRatio = 4 / 3;
+            var blockAspectRatio;
+            var tempVideoWidth = 0;
+            var maxVideoWidth = 0;
+            for (var i = length; i > 0; i--) {
+                blockAspectRatio = i * videoAspectRatio / Math.ceil(length / i);
+                if (blockAspectRatio <= windowAspectRatio) {
+                    tempVideoWidth = videoAspectRatio * windowHeight / Math.ceil(length / i);
+                } else {
+                    tempVideoWidth = windowWidth / i;
+                }
+                if (tempVideoWidth > maxVideoWidth)
+                    maxVideoWidth = tempVideoWidth;
+            }
+            for (var i = 0; i < length; i++) {
+                video = videos[i];
+                if (video)
+                    video.width = maxVideoWidth - minus;
+            }
+        }
+        window.onresize = scaleVideos;
+</script>
+    </body>
+</html>
