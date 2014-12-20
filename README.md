@@ -1,7 +1,7 @@
 piano-led
 =========
 
-tl;dr, a web based piano that makes LEDs blink (in the server, through Arduino)
+tl;dr, a web based piano that makes LEDs blink (in the server, through [Arduino](http://www.arduino.cc/))
 
 I set this up, exposed my dev server through a localtunnel, and [tweeted](https://twitter.com/srikrishnaholla/status/546371120346062848) it
 
